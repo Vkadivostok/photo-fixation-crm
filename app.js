@@ -22,6 +22,15 @@ const app = {
     // Инициализация при загрузке
     init() {
         console.log("Инициализация приложения...");
+        
+        // Автоматическое обновление демо-данных до новой версии с реальными фото
+        const CURRENT_VERSION = '1.1';
+        const installedVersion = localStorage.getItem('auto_crm_version');
+        if (installedVersion !== CURRENT_VERSION) {
+            localStorage.removeItem('auto_crm_orders');
+            localStorage.setItem('auto_crm_version', CURRENT_VERSION);
+        }
+
         this.loadOrders();
         
         // Если база пуста, наполняем демо-данными
@@ -1195,19 +1204,22 @@ const app = {
         const mockOrders = [
             {
                 id: "WO-2026-9481",
-                carBrand: "Porsche Cayenne Coupe",
+                carBrand: "Porsche Cayenne Coupe GTS",
                 carPlate: "Х 999 ХХ 799",
                 carMileage: "45300",
-                orderDesc: "ТО-3, детейлинг салона",
-                notes: "Автомобиль в пленке, на капоте пленка замята. В багажнике лежит детское кресло.",
+                orderDesc: "Периодическое ТО-3, устранение царапин бампера, полировка, детейлинг салона",
+                notes: "Автомобиль в матовой защитной пленке, на капоте пленка имеет небольшое замятие. В багажнике находится детское кресло Britax. Уровень топлива - 3/4. Претензий по комплектации нет.",
                 date: new Date(Date.now() - 4 * 3600000).toISOString(), // 4 часа назад
                 status: 'active',
                 photos: {
-                    'ext-front': createMockPhoto('Cayenne Спереди', '#2d3436'),
-                    'ext-back': createMockPhoto('Cayenne Сзади', '#2d3436'),
-                    'ext-left': createMockPhoto('Cayenne Слева', '#2d3436'),
-                    'ext-right': createMockPhoto('Cayenne Справа', '#2d3436'),
-                    'int-dash': createMockPhoto('Панель (45 тыс.км)', '#1e272e')
+                    'ext-front': 'assets/cayenne-front.png',
+                    'ext-back': 'assets/cayenne-back.png',
+                    'ext-left': 'assets/cayenne-front.png',
+                    'ext-right': 'assets/cayenne-back.png',
+                    'int-dash': 'assets/cayenne-interior.png',
+                    'int-front': createMockPhoto('Салон спереди', '#2d3436'),
+                    'int-back': createMockPhoto('Салон сзади', '#2d3436'),
+                    'int-trunk': createMockPhoto('Багажник с креслом', '#1e272e')
                 },
                 damages: [
                     {
@@ -1216,7 +1228,7 @@ const app = {
                         type: "Царапина",
                         x: 40.5,
                         y: 25.2,
-                        photo: createMockPhoto('Царапина бампера', '#d63031')
+                        photo: 'assets/scratch-bumper.png'
                     },
                     {
                         id: 2,
@@ -1224,7 +1236,7 @@ const app = {
                         type: "Вмятина",
                         x: 29.8,
                         y: 45.6,
-                        photo: createMockPhoto('Вмятина на двери', '#d63031')
+                        photo: 'assets/dent-door.png'
                     }
                 ],
                 clientSignature: mockSignature(),
@@ -1232,11 +1244,11 @@ const app = {
             },
             {
                 id: "WO-2026-8942",
-                carBrand: "Audi e-tron",
+                carBrand: "Audi e-tron Sportback",
                 carPlate: "Е 456 КХ 77",
                 carMileage: "28100",
-                orderDesc: "Замена тормозных колодок",
-                notes: "Повреждений при приемке не обнаружено. Сданы чистые диски.",
+                orderDesc: "Диагностика подвески, замена тормозных колодок по кругу",
+                notes: "Повреждений кузова при приемке не обнаружено. Колесные диски чистые, без бордюрной болезни. Заказ выполнен в полном объеме.",
                 date: new Date(Date.now() - 24 * 3600000).toISOString(), // день назад
                 status: 'completed',
                 photos: {
@@ -1249,8 +1261,8 @@ const app = {
                 damages: [],
                 clientSignature: mockSignature(),
                 resultPhotos: {
-                    'res-1': createMockPhoto('Новые тормоза', '#00b894'),
-                    'res-2': createMockPhoto('Чистые диски', '#00b894')
+                    'res-1': createMockPhoto('Новые колодки Brembo', '#00b894'),
+                    'res-2': createMockPhoto('Выполненные работы', '#00b894')
                 }
             }
         ];
