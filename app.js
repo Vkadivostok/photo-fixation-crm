@@ -26,7 +26,7 @@ const app = {
         console.log("Инициализация приложения...");
         
         // Автоматическое обновление демо-данных до новой версии с реальными фото
-        const CURRENT_VERSION = '1.2';
+        const CURRENT_VERSION = '1.3';
         const installedVersion = localStorage.getItem('auto_crm_version');
         if (installedVersion !== CURRENT_VERSION) {
             localStorage.removeItem('auto_crm_orders');
@@ -307,6 +307,8 @@ const app = {
 
     closeCameraModal() {
         this.stopCameraStream();
+        const errOverlay = document.getElementById('camera-error-overlay');
+        if (errOverlay) errOverlay.remove();
         const modal = document.getElementById('camera-modal');
         if (modal) modal.classList.remove('active');
     },
@@ -333,8 +335,32 @@ const app = {
             })
             .catch(err => {
                 console.error("Не удалось запустить видеопоток камеры:", err);
-                alert("Ошибка: Камера заблокирована или недоступна. Пожалуйста, предоставьте доступ к камере в настройках браузера.");
-                this.closeCameraModal();
+                
+                // Показываем красивое и неблокирующее сообщение об ошибке прямо в видоискателе
+                const errorOverlay = document.createElement('div');
+                errorOverlay.id = 'camera-error-overlay';
+                errorOverlay.style.position = 'absolute';
+                errorOverlay.style.top = '0';
+                errorOverlay.style.left = '0';
+                errorOverlay.style.right = '0';
+                errorOverlay.style.bottom = '0';
+                errorOverlay.style.display = 'flex';
+                errorOverlay.style.flexDirection = 'column';
+                errorOverlay.style.justifyContent = 'center';
+                errorOverlay.style.alignItems = 'center';
+                errorOverlay.style.background = '#111';
+                errorOverlay.style.color = '#fff';
+                errorOverlay.style.padding = '20px';
+                errorOverlay.style.textAlign = 'center';
+                errorOverlay.style.zIndex = '125';
+                
+                errorOverlay.innerHTML = `
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" style="margin-bottom:15px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    <h4 style="color:var(--danger); margin-bottom:10px; font-size:1.1rem;">Камера недоступна</h4>
+                    <p class="text-muted" style="font-size:0.85rem; max-width:280px; margin-bottom:20px; line-height:1.4;">Разрешите доступ к камере в настройках браузера или откройте CRM со смартфона.</p>
+                    <button class="btn btn-secondary" onclick="app.closeCameraModal()" style="padding: 8px 24px;">Закрыть</button>
+                `;
+                video.parentNode.appendChild(errorOverlay);
             });
     },
 
