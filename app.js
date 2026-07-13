@@ -336,7 +336,9 @@ const app = {
                         this.state.currentOrder.resultPhotos = {};
                     }
                     this.state.currentOrder.resultPhotos[slotName] = compressedBase64;
-                    this.updatePhotoSlotView(`slot-${slotName}`, compressedBase64, `Результат ${slotName.split('-')[1]}`);
+                    this.setupResultPhotoSlots(this.state.currentOrder);
+                    this.saveOrders();
+                    this.renderReport(this.state.currentOrder); // Обновляем печатный вид
                 } else {
                     // Стандартный шаг осмотра (периметр или салон)
                     this.state.tempPhotos[this.state.activePhotoSlot] = compressedBase64;
@@ -372,42 +374,48 @@ const app = {
     // Удаление фото из слота
     deletePhoto(event, elementId) {
         event.stopPropagation(); // Предотвращаем повторный клик на слот
-        const slot = document.getElementById(elementId);
-        if (!slot) return;
-
-        const labelMap = {
-            'slot-ext-front': 'Спереди',
-            'slot-ext-back': 'Сзади',
-            'slot-ext-left': 'Слева (Бок)',
-            'slot-ext-right': 'Справа (Бок)',
-            'slot-int-dash': 'Приборная панель',
-            'slot-int-front': 'Передний ряд',
-            'slot-int-back': 'Задний ряд',
-            'slot-int-trunk': 'Багажник / Доп.',
-            'slot-damage-photo': 'Сделать снимок дефекта',
-            'slot-res-1': 'Фото результата 1',
-            'slot-res-2': 'Фото результата 2'
-        };
-
-        const defaultLabel = labelMap[elementId] || 'Сделать фото';
-
-        slot.className = 'photo-slot';
-        slot.innerHTML = `
-            <svg class="photo-slot-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-            <span class="photo-slot-label">${defaultLabel}</span>
-        `;
-
+        
         // Очищаем в стейте
         if (elementId === 'slot-damage-photo') {
             delete this.state.tempPhotos['damage-temp'];
-        } else if (elementId.startsWith('slot-res-')) {
-            const key = elementId.replace('slot-', '');
-            if (this.state.currentOrder.resultPhotos) {
-                delete this.state.currentOrder.resultPhotos[key];
+            const slot = document.getElementById(elementId);
+            if (slot) {
+                slot.className = 'photo-slot';
+                slot.innerHTML = `
+                    <svg class="photo-slot-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                    <span class="photo-slot-label">Сделать снимок дефекта</span>
+                `;
             }
+        } else if (elementId.startsWith('slot-res-')) {
+            const actualKey = elementId.replace('slot-', '');
+            if (this.state.currentOrder.resultPhotos) {
+                delete this.state.currentOrder.resultPhotos[actualKey];
+            }
+            this.setupResultPhotoSlots(this.state.currentOrder);
+            this.saveOrders();
+            this.renderReport(this.state.currentOrder); // Обновляем печатный вид
         } else {
             const key = elementId.replace('slot-', '');
             delete this.state.tempPhotos[key];
+            const slot = document.getElementById(elementId);
+            if (slot) {
+                const labelMap = {
+                    'slot-ext-front': 'Спереди',
+                    'slot-ext-back': 'Сзади',
+                    'slot-ext-left': 'Слева (Бок)',
+                    'slot-ext-right': 'Справа (Бок)',
+                    'slot-int-dash': 'Приборная панель',
+                    'slot-int-front': 'Передний ряд',
+                    'slot-int-back': 'Задний ряд',
+                    'slot-int-trunk': 'Багажник / Доп.'
+                };
+                const defaultLabel = labelMap[elementId] || 'Сделать фото';
+                slot.className = 'photo-slot';
+                slot.innerHTML = `
+                    <svg class="photo-slot-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                    <span class="photo-slot-label">${defaultLabel}</span>
+                `;
+            }
         }
     },
 
@@ -942,21 +950,52 @@ const app = {
         `;
     },
 
-    // Настройка слотов для фотографии результатов работ
+    // Настройка слотов для фотографии результатов работ (динамическое отображение)
     setupResultPhotoSlots(order) {
-        const slots = ['res-1', 'res-2'];
-        slots.forEach(slotKey => {
-            const slot = document.getElementById(`slot-${slotKey}`);
-            if (order.resultPhotos && order.resultPhotos[slotKey]) {
-                this.updatePhotoSlotView(`slot-${slotKey}`, order.resultPhotos[slotKey], `Результат ${slotKey.split('-')[1]}`);
-            } else {
-                slot.className = 'photo-slot';
-                slot.innerHTML = `
-                    <svg class="photo-slot-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                    <span class="photo-slot-label">Фото результата ${slotKey.split('-')[1]}</span>
-                `;
-            }
+        const grid = document.getElementById('results-photo-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        if (!order.resultPhotos) {
+            order.resultPhotos = {};
+        }
+
+        const keys = Object.keys(order.resultPhotos);
+        if (keys.length === 0) {
+            grid.innerHTML = `
+                <div class="text-center text-muted" style="grid-column: span 2; font-size: 0.85rem; padding: 15px; border: 1px dashed var(--border-color); border-radius: var(--radius-sm); width: 100%;">
+                    Фотографии результатов работ пока не добавлены.
+                </div>
+            `;
+            return;
+        }
+
+        keys.forEach((key, idx) => {
+            const slot = document.createElement('div');
+            slot.className = 'photo-slot filled';
+            slot.id = `slot-${key}`;
+            
+            const dateStr = this.formatDate(new Date(), true);
+            
+            slot.innerHTML = `
+                <img src="${order.resultPhotos[key]}" alt="Фото результата">
+                <button class="delete-photo-btn" onclick="app.deletePhoto(event, 'slot-${key}')">✕</button>
+                <div class="photo-slot-meta">
+                    <span>Результат ${idx + 1}</span>
+                    <span>${dateStr}</span>
+                </div>
+            `;
+            grid.appendChild(slot);
         });
+    },
+
+    // Добавление нового фото результата
+    addNewResultPhotoSlot() {
+        const order = this.state.currentOrder;
+        if (!order) return;
+        
+        const slotId = `res-${Date.now()}`;
+        this.triggerPhotoUpload(slotId);
     },
 
     // Завершить работы и выдать машину
