@@ -16,7 +16,9 @@ const app = {
         selectedCoords: { x: 0, y: 0 },
         isDrawingSignature: false,
         lastDrawCoords: { x: 0, y: 0 },
-        scanner: null
+        scanner: null,
+        cameraStream: null,
+        cameraFacingMode: 'environment'
     },
 
     // Инициализация при загрузке
@@ -24,7 +26,7 @@ const app = {
         console.log("Инициализация приложения...");
         
         // Автоматическое обновление демо-данных до новой версии с реальными фото
-        const CURRENT_VERSION = '1.1';
+        const CURRENT_VERSION = '1.2';
         const installedVersion = localStorage.getItem('auto_crm_version');
         if (installedVersion !== CURRENT_VERSION) {
             localStorage.removeItem('auto_crm_orders');
@@ -291,75 +293,110 @@ const app = {
         }
     },
 
-    // Триггер загрузки фото
+    // Триггер съемки фото (Камера онлайн через WebRTC)
     triggerPhotoUpload(slotId) {
         this.state.activePhotoSlot = slotId;
-        document.getElementById('camera-file-input').click();
+        this.openCameraModal();
     },
 
-    // Обработка загруженной фотографии
-    handlePhotoUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+    openCameraModal() {
+        const modal = document.getElementById('camera-modal');
+        if (modal) modal.classList.add('active');
+        this.startCameraStream();
+    },
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                // Сжимаем фото до 640px по ширине/высоте для экономии localStorage
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 640;
-                const MAX_HEIGHT = 480;
-                let width = img.width;
-                let height = img.height;
+    closeCameraModal() {
+        this.stopCameraStream();
+        const modal = document.getElementById('camera-modal');
+        if (modal) modal.classList.remove('active');
+    },
 
-                if (width > height) {
-                    if (width > MAX_WIDTH) {
-                        height *= MAX_WIDTH / width;
-                        width = MAX_WIDTH;
-                    }
-                } else {
-                    if (height > MAX_HEIGHT) {
-                        width *= MAX_HEIGHT / height;
-                        height = MAX_HEIGHT;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // Получаем сжатую base64 строку
-                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-                
-                // Записываем в стейт
-                if (this.state.activePhotoSlot === 'damage-temp') {
-                    // Временный снимок дефекта
-                    this.state.tempPhotos['damage-temp'] = compressedBase64;
-                    this.updatePhotoSlotView('slot-damage-photo', compressedBase64, 'Фото дефекта');
-                } else if (this.state.activePhotoSlot.startsWith('res-')) {
-                    // Фото результата работ
-                    const slotName = this.state.activePhotoSlot;
-                    if (!this.state.currentOrder.resultPhotos) {
-                        this.state.currentOrder.resultPhotos = {};
-                    }
-                    this.state.currentOrder.resultPhotos[slotName] = compressedBase64;
-                    this.setupResultPhotoSlots(this.state.currentOrder);
-                    this.saveOrders();
-                    this.renderReport(this.state.currentOrder); // Обновляем печатный вид
-                } else {
-                    // Стандартный шаг осмотра (периметр или салон)
-                    this.state.tempPhotos[this.state.activePhotoSlot] = compressedBase64;
-                    this.updatePhotoSlotView(`slot-${this.state.activePhotoSlot}`, compressedBase64);
-                }
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
+    startCameraStream() {
+        this.stopCameraStream(); // Останавливаем прошлый поток
         
-        // Сбрасываем input
-        event.target.value = '';
+        const video = document.getElementById('camera-stream-video');
+        if (!video) return;
+
+        const constraints = {
+            video: {
+                facingMode: this.state.cameraFacingMode,
+                width: { ideal: 1024 },
+                height: { ideal: 768 }
+            },
+            audio: false
+        };
+
+        navigator.mediaDevices.getUserMedia(constraints)
+            .then(stream => {
+                this.state.cameraStream = stream;
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Не удалось запустить видеопоток камеры:", err);
+                alert("Ошибка: Камера заблокирована или недоступна. Пожалуйста, предоставьте доступ к камере в настройках браузера.");
+                this.closeCameraModal();
+            });
+    },
+
+    stopCameraStream() {
+        if (this.state.cameraStream) {
+            this.state.cameraStream.getTracks().forEach(track => track.stop());
+            this.state.cameraStream = null;
+        }
+        const video = document.getElementById('camera-stream-video');
+        if (video) video.srcObject = null;
+    },
+
+    captureCameraPhoto() {
+        const video = document.getElementById('camera-stream-video');
+        if (!video || !this.state.cameraStream) return;
+
+        // Создаем холст для захвата кадра
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Зеркалим изображение при фронтальной съемке
+        if (this.state.cameraFacingMode === 'user') {
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+        }
+        
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Сжатый JPEG
+        const base64Data = canvas.toDataURL('image/jpeg', 0.85);
+
+        // Обработка сохранения фото
+        const slotName = this.state.activePhotoSlot;
+
+        if (slotName === 'damage-temp') {
+            // Временный снимок дефекта
+            this.state.tempPhotos['damage-temp'] = base64Data;
+            this.updatePhotoSlotView('slot-damage-photo', base64Data, 'Фото дефекта');
+        } else if (slotName.startsWith('res-')) {
+            // Фото результата работ
+            if (!this.state.currentOrder.resultPhotos) {
+                this.state.currentOrder.resultPhotos = {};
+            }
+            this.state.currentOrder.resultPhotos[slotName] = base64Data;
+            this.setupResultPhotoSlots(this.state.currentOrder);
+            this.saveOrders();
+            this.renderReport(this.state.currentOrder); // Обновляем печатный вид
+        } else {
+            // Стандартный шаг осмотра (периметр или салон)
+            this.state.tempPhotos[slotName] = base64Data;
+            this.updatePhotoSlotView(`slot-${slotName}`, base64Data);
+        }
+
+        this.closeCameraModal();
+    },
+
+    toggleCameraFacing() {
+        this.state.cameraFacingMode = this.state.cameraFacingMode === 'environment' ? 'user' : 'environment';
+        this.startCameraStream();
     },
 
     // Обновление превью фото в слоте

@@ -390,12 +390,45 @@
             </div>
         </div>
 
-        <!-- СКРЫТЫЙ INPUT ДЛЯ ЗАГРУЗКИ ФОТОГРАФИЙ (С КАМЕРЫ НА ТЕЛЕФОНЕ) -->
-        <input type="file" id="camera-file-input" accept="image/*" capture="environment" style="display: none;" onchange="app.handlePhotoUpload(event)">
+        <!-- ПОЛНОЭКРАННОЕ МОДАЛЬНОЕ ОКНО ЖИВОЙ КАМЕРЫ (МЕДИАСИСТЕМА WebRTC) -->
+        <div class="modal-overlay" id="camera-modal" style="z-index: 120; background: #000; padding: 0;">
+            <div style="position: relative; width: 100%; height: 100vh; display: flex; flex-direction: column; overflow: hidden;">
+                <!-- Кнопка закрытия -->
+                <button class="scanner-close-btn" onclick="app.closeCameraModal()" style="z-index: 130; top: 15px; right: 15px;">✕</button>
+                
+                <!-- Видеопоток -->
+                <video id="camera-stream-video" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                
+                <!-- Оверлей видоискателя кузова/дефекта -->
+                <div class="scanner-overlay" style="border: none; justify-content: center; align-items: center; background: transparent; padding: 0; pointer-events: none;">
+                    <div style="width: 85%; height: 60%; border: 2px dashed rgba(197, 255, 26, 0.4); border-radius: var(--radius-md); box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); position: relative;">
+                        <div style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.7); padding: 4px 10px; border-radius: var(--radius-sm); color: var(--primary); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em;">
+                            РЕЖИМ СЪЕМКИ ОНЛАЙН
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Кнопки управления затвором и разворотом камеры -->
+                <div style="position: absolute; bottom: 30px; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 24px; z-index: 130;">
+                    <!-- Закрыть -->
+                    <button class="btn btn-secondary" onclick="app.closeCameraModal()" style="border-radius: var(--radius-full); width: 50px; height: 50px; padding: 0; display: flex; align-items: center; justify-content: center; border-color: rgba(255,255,255,0.2);">
+                        ✕
+                    </button>
+                    <!-- Затвор -->
+                    <button id="camera-capture-btn" onclick="app.captureCameraPhoto()" style="width: 76px; height: 76px; border-radius: var(--radius-full); background: white; border: 6px solid rgba(197, 255, 26, 0.4); box-shadow: 0 0 20px rgba(197, 255, 26, 0.6); cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none; transition: var(--transition);">
+                        <div style="width: 50px; height: 50px; border-radius: var(--radius-full); background: var(--primary);"></div>
+                    </button>
+                    <!-- Развернуть камеру -->
+                    <button class="btn btn-secondary" id="camera-toggle-btn" onclick="app.toggleCameraFacing()" style="border-radius: var(--radius-full); width: 50px; height: 50px; padding: 0; display: flex; align-items: center; justify-content: center; border-color: rgba(255,255,255,0.2);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
 
     </div>
 
     <!-- Подключаем JavaScript логику -->
-    <script src="app.js?v=1.1"></script>
+    <script src="app.js?v=1.2"></script>
 </body>
 </html>
