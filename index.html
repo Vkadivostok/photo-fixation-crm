@@ -2,433 +2,126 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Фотофиксация CRM — Приемка Автосервиса</title>
-    <meta name="description" content="Мобильная CRM-система для фотофиксации состояния автомобиля при приеме и сдаче в автосервисе">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Фотоотчет по заказ-наряду: фиксация автомобиля до и после работ">
+    <title>Фотофиксация — фото до и после</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Подключаем библиотеку сканирования штрихкодов html5-qrcode -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
     <div class="app-container">
-        
-        <!-- HEADER -->
-        <header class="app-header">
-            <div class="brand" onclick="app.showView('dashboard')">
+        <header class="app-header no-print">
+            <button class="brand" type="button" onclick="app.showView('dashboard')" aria-label="На главный экран">
                 <div class="brand-icon">F</div>
                 <div>
-                    <h1 class="brand-title">ФОТОФИКСАЦИЯ</h1>
-                    <div class="brand-subtitle">Smart Inspection CRM</div>
+                    <h1 class="brand-title">Фотофиксация</h1>
+                    <div class="brand-subtitle">Фото до / после</div>
                 </div>
-            </div>
-            <div class="user-profile">
-                <span>Мастер: Андрей</span>
-                <div class="user-avatar">АП</div>
-            </div>
+            </button>
+            <div class="storage-badge">Демо</div>
         </header>
 
-        <!-- DASHBOARD VIEW -->
         <main id="dashboard-view" class="view active">
-            <div class="stats-grid">
+            <section class="stats-grid" aria-label="Статистика фотоотчетов">
                 <div class="stat-card">
                     <span class="stat-value" id="stats-total">0</span>
-                    <span class="stat-label">Всего заказов</span>
+                    <span class="stat-label">Фотоотчетов</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value" id="stats-active" style="color: var(--warning);">0</span>
-                    <span class="stat-label">В работе</span>
+                    <span class="stat-value stat-warning" id="stats-active">0</span>
+                    <span class="stat-label">Без фото после</span>
                 </div>
-            </div>
+            </section>
+
+            <section class="order-entry">
+                <label class="field-label" for="order-number">Номер заказ-наряда</label>
+                <div class="scan-row">
+                    <input type="text" id="order-number" class="input-field text-mono" autocomplete="off" inputmode="text" placeholder="WO-2026-0001">
+                    <button class="icon-btn" type="button" onclick="app.startScanner('order-number')" aria-label="Сканировать штрихкод">
+                        <span aria-hidden="true">▦</span>
+                    </button>
+                </div>
+                <button class="btn btn-primary btn-full" type="button" onclick="app.startReportFromInput()">Открыть фотоотчет</button>
+            </section>
+
+            <section class="list-header">
+                <h2>Фотоотчеты</h2>
+                <span id="orders-count" class="count-pill">0</span>
+            </section>
 
             <div class="search-container">
-                <input type="text" id="search-input" class="search-input" placeholder="Поиск по № заказ-наряда..." oninput="app.searchOrders()">
-                <div class="search-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                </div>
-                <button class="scan-action-btn" onclick="app.startScanner()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"></path></svg>
-                    Сканировать
-                </button>
+                <input type="search" id="search-input" class="search-input" placeholder="Поиск по номеру заказ-наряда" oninput="app.searchReports()">
             </div>
 
-            <div class="orders-list-title">
-                <span>АКТИВНЫЕ ЗАКАЗ-НАРЯДЫ</span>
-                <span class="text-muted" id="orders-count" style="font-size: 0.8rem;">0</span>
-            </div>
-
-            <div class="orders-stack" id="orders-list">
-                <!-- Сюда динамически добавляются карточки заказов -->
-            </div>
+            <section class="reports-list" id="reports-list" aria-live="polite"></section>
         </main>
 
-        <!-- WIZARD INSPECTION VIEW -->
-        <main id="wizard-view" class="view">
-            <div class="wizard-header">
-                <h2 id="wizard-title">Новый осмотр автомобиля</h2>
-                <div class="step-indicator">
-                    <div class="step-dot active" data-step="1">1</div>
-                    <div class="step-dot" data-step="2">2</div>
-                    <div class="step-dot" data-step="3">3</div>
-                    <div class="step-dot" data-step="4">4</div>
-                    <div class="step-dot" data-step="5">5</div>
-                </div>
-            </div>
-
-            <!-- Шаг 1: Основная информация -->
-            <div class="wizard-step active" id="step-1">
-                <h3>Шаг 1: Данные заказа</h3>
-                <div class="form-group">
-                    <label for="order-number">Номер заказ-наряда *</label>
-                    <div style="position: relative; display: flex; gap: 8px;">
-                        <input type="text" id="order-number" class="input-field text-mono" placeholder="Введите или сканируйте номер">
-                        <button class="btn btn-secondary" style="padding: 10px;" onclick="app.startScanner('order-number')">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"></path></svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="car-brand">Марка и модель автомобиля *</label>
-                    <input type="text" id="car-brand" class="input-field" placeholder="Например: Toyota Camry">
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="car-plate">Гос. номер</label>
-                        <input type="text" id="car-plate" class="input-field" placeholder="А 777 АА 77">
-                    </div>
-                    <div class="form-group">
-                        <label for="car-mileage">Пробег, км</label>
-                        <input type="number" id="car-mileage" class="input-field" placeholder="125000">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="order-desc">Причина обращения / Работы</label>
-                    <input type="text" id="order-desc" class="input-field" placeholder="ТО, ремонт подвески, кузовной ремонт">
-                </div>
-            </div>
-
-            <!-- Шаг 2: Внешний вид (Периметр) -->
-            <div class="wizard-step" id="step-2">
-                <h3>Шаг 2: Фотофиксация по периметру</h3>
-                <p class="text-muted" style="font-size: 0.85rem; margin-top: -10px;">Сфотографируйте кузов автомобиля со всех четырех сторон.</p>
-                <div class="photo-grid">
-                    <!-- Спереди -->
-                    <div class="photo-slot" id="slot-ext-front" onclick="app.triggerPhotoUpload('ext-front')">
-                        <svg class="photo-slot-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                        <span class="photo-slot-label">Спереди</span>
-                    </div>
-                    <!-- Сзади -->
-                    <div class="photo-slot" id="slot-ext-back" onclick="app.triggerPhotoUpload('ext-back')">
-                        <svg class="photo-slot-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                        <span class="photo-slot-label">Сзади</span>
-                    </div>
-                    <!-- Слева -->
-                    <div class="photo-slot" id="slot-ext-left" onclick="app.triggerPhotoUpload('ext-left')">
-                        <svg class="photo-slot-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                        <span class="photo-slot-label">Слева (Бок)</span>
-                    </div>
-                    <!-- Справа -->
-                    <div class="photo-slot" id="slot-ext-right" onclick="app.triggerPhotoUpload('ext-right')">
-                        <svg class="photo-slot-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                        <span class="photo-slot-label">Справа (Бок)</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Шаг 3: Салон и детали -->
-            <div class="wizard-step" id="step-3">
-                <h3>Шаг 3: Состояние салона</h3>
-                <p class="text-muted" style="font-size: 0.85rem; margin-top: -10px;">Сфотографируйте приборную панель с пробегом, сиденья и багажник.</p>
-                <div class="photo-grid">
-                    <!-- Панель приборов -->
-                    <div class="photo-slot" id="slot-int-dash" onclick="app.triggerPhotoUpload('int-dash')">
-                        <svg class="photo-slot-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                        <span class="photo-slot-label">Приборная панель</span>
-                    </div>
-                    <!-- Передний ряд -->
-                    <div class="photo-slot" id="slot-int-front" onclick="app.triggerPhotoUpload('int-front')">
-                        <svg class="photo-slot-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                        <span class="photo-slot-label">Передний ряд</span>
-                    </div>
-                    <!-- Задний ряд -->
-                    <div class="photo-slot" id="slot-int-back" onclick="app.triggerPhotoUpload('int-back')">
-                        <svg class="photo-slot-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                        <span class="photo-slot-label">Задний ряд</span>
-                    </div>
-                    <!-- Багажник -->
-                    <div class="photo-slot" id="slot-int-trunk" onclick="app.triggerPhotoUpload('int-trunk')">
-                        <svg class="photo-slot-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                        <span class="photo-slot-label">Багажник / Доп.</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Шаг 4: Дефекты (Интерактивная схема) -->
-            <div class="wizard-step" id="step-4">
-                <h3>Шаг 4: Карта повреждений кузова</h3>
-                <p class="text-muted" style="font-size: 0.85rem; margin-top: -10px;">Нажмите на область на схеме автомобиля, чтобы зафиксировать дефект.</p>
-                
-                <div class="schematic-container" id="blueprint-wrapper">
-                    <!-- ИНТЕРАКТИВНАЯ SVG-СХЕМА АВТОМОБИЛЯ -->
-                    <svg viewBox="0 0 350 250" class="car-svg" id="car-schematic">
-                        <!-- Вид сверху (Center) -->
-                        <g id="part-group-top">
-                            <!-- Капот -->
-                            <path class="car-part" d="M 120 70 L 160 70 L 155 100 L 125 100 Z" data-part="Капот"></path>
-                            <!-- Крыша -->
-                            <rect class="car-part" x="120" y="105" width="40" height="50" rx="3" data-part="Крыша"></rect>
-                            <!-- Багажник -->
-                            <path class="car-part" d="M 120 160 L 160 160 L 158 185 L 122 185 Z" data-part="Багажник"></path>
-                            <!-- Бампер передний -->
-                            <path class="car-part" d="M 115 60 L 165 60 L 160 70 L 120 70 Z" data-part="Передний Бампер"></path>
-                            <!-- Бампер задний -->
-                            <path class="car-part" d="M 120 185 L 160 185 L 162 195 L 118 195 Z" data-part="Задний Бампер"></path>
-                        </g>
-
-                        <!-- Левая сторона (Верхнее левое на схеме) -->
-                        <g id="part-group-left">
-                            <!-- Переднее левое крыло -->
-                            <path class="car-part" d="M 100 70 L 120 70 L 125 100 L 105 100 Z" data-part="Крыло переднее левое"></path>
-                            <!-- Дверь передняя левая -->
-                            <rect class="car-part" x="95" y="105" width="22" height="23" rx="1" data-part="Дверь передняя левая"></rect>
-                            <!-- Дверь задняя левая -->
-                            <rect class="car-part" x="95" y="131" width="22" height="23" rx="1" data-part="Дверь задняя левая"></rect>
-                            <!-- Заднее левое крыло -->
-                            <path class="car-part" d="M 100 160 L 120 160 L 122 185 L 102 185 Z" data-part="Крыло заднее левое"></path>
-                        </g>
-
-                        <!-- Правая сторона (Верхнее правое на схеме) -->
-                        <g id="part-group-right">
-                            <!-- Переднее правое крыло -->
-                            <path class="car-part" d="M 160 70 L 180 70 L 175 100 L 155 100 Z" data-part="Крыло переднее правое"></path>
-                            <!-- Дверь передняя правая -->
-                            <rect class="car-part" x="163" y="105" width="22" height="23" rx="1" data-part="Дверь передняя правая"></rect>
-                            <!-- Дверь задняя правая -->
-                            <rect class="car-part" x="163" y="131" width="22" height="23" rx="1" data-part="Дверь задняя правая"></rect>
-                            <!-- Заднее правое крыло -->
-                            <path class="car-part" d="M 160 160 L 180 160 L 178 185 L 158 185 Z" data-part="Крыло заднее правое"></path>
-                        </g>
-
-                        <!-- Стекла -->
-                        <g id="part-group-glass">
-                            <!-- Лобовое стекло -->
-                            <path class="car-part" d="M 124 100 L 156 100 L 158 105 L 122 105 Z" data-part="Лобовое стекло"></path>
-                            <!-- Заднее стекло -->
-                            <path class="car-part" d="M 122 155 L 158 155 L 156 160 L 124 160 Z" data-part="Заднее стекло"></path>
-                        </g>
-
-                        <!-- Колеса для визуализации -->
-                        <rect x="86" y="80" width="8" height="18" rx="2" fill="#333" stroke="var(--border-color)"></rect>
-                        <rect x="186" y="80" width="8" height="18" rx="2" fill="#333" stroke="var(--border-color)"></rect>
-                        <rect x="86" y="160" width="8" height="18" rx="2" fill="#333" stroke="var(--border-color)"></rect>
-                        <rect x="186" y="160" width="8" height="18" rx="2" fill="#333" stroke="var(--border-color)"></rect>
-
-                        <!-- Текст подсказки сторон -->
-                        <text x="140" y="45" fill="var(--text-muted)" font-size="9" text-anchor="middle" font-weight="600">ПЕРЕД</text>
-                        <text x="140" y="215" fill="var(--text-muted)" font-size="9" text-anchor="middle" font-weight="600">ЗАД</text>
-                        <text x="50" y="135" fill="var(--text-muted)" font-size="9" text-anchor="middle" font-weight="600">ЛЕВО</text>
-                        <text x="230" y="135" fill="var(--text-muted)" font-size="9" text-anchor="middle" font-weight="600">ПРАВО</text>
-                    </svg>
-                    <!-- Маркеры повреждений будут добавляться сюда динамически через JS -->
-                </div>
-
-                <div class="orders-list-title" style="margin-top: 10px;">
-                    <span>ЗАРЕГИСТРИРОВАННЫЕ ДЕФЕКТЫ</span>
-                    <span id="damages-count" class="badge badge-danger">0</span>
-                </div>
-
-                <div class="damages-list-container" id="wizard-damages-list">
-                    <!-- Записи о повреждениях (пусто при старте) -->
-                    <div class="text-center text-muted" style="font-size: 0.85rem; padding: 15px;">Дефекты не обнаружены. Кликните по кузову для фиксации.</div>
-                </div>
-            </div>
-
-            <!-- Шаг 5: Согласование и Подпись -->
-            <div class="wizard-step" id="step-5">
-                <h3>Шаг 5: Завершение приемки</h3>
-                
-                <div class="form-group">
-                    <label for="wizard-notes">Дополнительные примечания мастера</label>
-                    <textarea id="wizard-notes" class="input-field" rows="3" placeholder="Царапины на бампере согласованы с клиентом, в багажнике личные вещи."></textarea>
-                </div>
-
-                <div class="signature-container">
-                    <label style="font-size: 0.85rem; font-weight: 500; color: var(--text-muted);">Подпись клиента на экране *</label>
-                    <canvas id="signature-canvas"></canvas>
-                    <div class="signature-actions">
-                        <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="app.clearSignature()">Очистить</button>
-                        <span class="text-muted" style="font-size: 0.75rem; align-self: center;">Поставьте роспись пальцем</span>
-                    </div>
-                </div>
-
-                <div style="background-color: rgba(197, 255, 26, 0.05); border: 1px solid rgba(197, 255, 26, 0.2); padding: 12px; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-muted);">
-                    Нажимая кнопку «Сохранить», мастер и клиент подтверждают соответствие фотофиксации текущему состоянию ТС.
-                </div>
-            </div>
-
-            <!-- Кнопки управления шагами -->
-            <div class="wizard-actions">
-                <button class="btn btn-secondary" id="btn-wizard-prev" onclick="app.wizardPrev()">Назад</button>
-                <button class="btn btn-primary" id="btn-wizard-next" onclick="app.wizardNext()">Далее</button>
-            </div>
-        </main>
-
-        <!-- BARCODE/QR SCANNER MODAL VIEW -->
-        <main id="scanner-view" class="view">
-            <button class="scanner-close-btn" onclick="app.stopScanner()">✕</button>
-            <div class="scanner-camera-container">
-                <div id="scanner-container-element" style="width: 100%; max-height: 70vh;"></div>
-                <div class="scanner-overlay">
-                    <div class="scanner-frame">
-                        <div class="scanner-frame-bottom-left"></div>
-                        <div class="scanner-frame-bottom-right"></div>
-                        <div class="scanner-laser"></div>
-                    </div>
-                    <div class="scanner-instructions">
-                        Наведите камеру на штрих-код заказ-наряда
-                        <div style="margin-top: 20px;">
-                            <!-- Кнопка симуляции для демонстрации на ПК -->
-                            <button class="btn btn-secondary" style="font-size: 0.8rem; background: rgba(0,0,0,0.8);" onclick="app.simulateScan()">
-                                Имитировать сканирование (ПК)
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <!-- REPORT / ORDER DETAIL VIEW -->
         <main id="report-view" class="view">
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;" class="no-print">
-                <button class="btn btn-secondary" onclick="app.showView('dashboard')">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                    В меню
-                </button>
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn btn-primary" onclick="window.print()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                        PDF Отчет
-                    </button>
-                </div>
+            <div class="report-toolbar no-print">
+                <button class="btn btn-secondary" type="button" onclick="app.showView('dashboard')">Назад</button>
+                <button class="btn btn-primary" type="button" onclick="window.print()">Печать</button>
             </div>
 
-            <div class="report-card" id="report-card-content">
-                <!-- Содержимое отчета формируется динамически в JS -->
-            </div>
+            <article class="photo-report-card" id="report-card-content">
+                <header class="report-head">
+                    <div>
+                        <div class="eyebrow">Заказ-наряд</div>
+                        <h2 id="report-order-number">#</h2>
+                        <p id="report-date" class="text-muted"></p>
+                    </div>
+                    <span class="badge" id="report-status">В работе</span>
+                </header>
 
-            <!-- Для заказов в статусе "В работе" даем кнопку фиксации результатов работ -->
-            <div id="work-result-actions" class="no-print" style="display: none; flex-direction: column; gap: 16px; border-top: 1px solid var(--border-color); padding-top: 20px;">
-                <h3 style="color: var(--primary);">Сдача автомобиля (Результат работ)</h3>
-                <p class="text-muted" style="font-size: 0.85rem; margin-top: -10px;">Зафиксируйте результат проделанных работ перед выдачей клиенту.</p>
-                
-                <div class="photo-grid" id="results-photo-grid">
-                    <!-- Динамические слоты для фото готовых работ -->
+                <section class="photo-section">
+                    <div class="section-title-row">
+                        <h3>До работ</h3>
+                        <span class="count-pill" id="before-count">0</span>
+                    </div>
+                    <div class="photo-grid" id="before-grid"></div>
+                    <button class="btn btn-secondary btn-full no-print" type="button" onclick="app.addPhoto('before')">Добавить фото до</button>
+                </section>
+
+                <section class="photo-section">
+                    <div class="section-title-row">
+                        <h3>После работ</h3>
+                        <span class="count-pill" id="after-count">0</span>
+                    </div>
+                    <div class="photo-grid" id="after-grid"></div>
+                    <button class="btn btn-secondary btn-full no-print" type="button" onclick="app.addPhoto('after')">Добавить фото после</button>
+                </section>
+            </article>
+        </main>
+
+        <main id="scanner-view" class="view scanner-view">
+            <button class="scanner-close-btn" type="button" onclick="app.stopScanner()" aria-label="Закрыть сканер">×</button>
+            <div class="scanner-shell">
+                <div id="scanner-container-element"></div>
+                <div class="scanner-frame" aria-hidden="true">
+                    <div class="scanner-laser"></div>
                 </div>
-
-                <button class="btn btn-secondary btn-full" id="btn-add-result-photo" onclick="app.addNewResultPhotoSlot()">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    Добавить фото результата работы
-                </button>
-
-                <button class="btn btn-primary btn-full" onclick="app.completeOrder()">
-                    Завершить заказ и выдать автомобиль
-                </button>
+                <div class="scanner-panel">
+                    <div class="scanner-title">Сканер заказ-наряда</div>
+                    <button class="btn btn-secondary" type="button" onclick="app.simulateScan()">Демо-номер</button>
+                    <p id="scanner-status" class="scanner-status"></p>
+                </div>
             </div>
         </main>
 
-        <!-- BOTTOM NAV BAR (HIDDEN IN PRINT MODE) -->
-        <nav class="bottom-nav no-print">
-            <button class="nav-item active" id="nav-dashboard" onclick="app.showView('dashboard')">
-                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                Заказы
-            </button>
-            
-            <button class="nav-item nav-item-center" onclick="app.startNewInspection()">
-                <div class="nav-item-center-btn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <div class="modal-overlay" id="camera-modal">
+            <div class="camera-shell">
+                <button class="scanner-close-btn" type="button" onclick="app.closeCameraModal()" aria-label="Закрыть камеру">×</button>
+                <video id="camera-stream-video" autoplay playsinline></video>
+                <div class="camera-frame" aria-hidden="true"></div>
+                <div class="camera-actions">
+                    <button class="circle-btn" type="button" onclick="app.closeCameraModal()" aria-label="Отмена">×</button>
+                    <button class="capture-btn" type="button" onclick="app.captureCameraPhoto()" aria-label="Сделать фото"></button>
+                    <button class="circle-btn" type="button" onclick="app.toggleCameraFacing()" aria-label="Переключить камеру">↻</button>
                 </div>
-                <span>Приемка</span>
-            </button>
-
-            <button class="nav-item" id="nav-scanner" onclick="app.startScanner()">
-                <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                Сканировать
-            </button>
-        </nav>
-
-        <!-- DAMAGE POPUP MODAL -->
-        <div class="modal-overlay" id="damage-modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3 id="damage-modal-title">Добавить дефект</h3>
-                    <button class="modal-close" onclick="app.closeDamageModal()">✕</button>
-                </div>
-                <div class="form-group">
-                    <label>Выбранная деталь</label>
-                    <input type="text" id="damage-part-name" class="input-field" disabled style="background-color: var(--bg-main); border-color: transparent;">
-                </div>
-                <div class="form-group">
-                    <label for="damage-type">Тип дефекта</label>
-                    <select id="damage-type" class="input-field">
-                        <option value="Царапина">Царапина</option>
-                        <option value="Вмятина">Вмятина</option>
-                        <option value="Скол">Скол</option>
-                        <option value="Трещина">Трещина</option>
-                        <option value="Притертость">Притертость</option>
-                        <option value="Ржавчина">Коррозия / Ржавчина</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Фотография дефекта *</label>
-                    <div class="photo-slot" id="slot-damage-photo" onclick="app.triggerPhotoUpload('damage-temp')">
-                        <svg class="photo-slot-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                        <span class="photo-slot-label">Сделать снимок дефекта</span>
-                    </div>
-                </div>
-                <button class="btn btn-primary btn-full" id="btn-save-damage" onclick="app.saveDamageMarker()">
-                    Зафиксировать дефект
-                </button>
+                <input type="file" id="photo-file-input" accept="image/*" capture="environment" onchange="app.handleFilePhoto(event)" hidden>
             </div>
         </div>
-
-        <!-- ПОЛНОЭКРАННОЕ МОДАЛЬНОЕ ОКНО ЖИВОЙ КАМЕРЫ (МЕДИАСИСТЕМА WebRTC) -->
-        <div class="modal-overlay" id="camera-modal" style="z-index: 120; background: #000; padding: 0;">
-            <div style="position: relative; width: 100%; height: 100vh; display: flex; flex-direction: column; overflow: hidden;">
-                <!-- Кнопка закрытия -->
-                <button class="scanner-close-btn" onclick="app.closeCameraModal()" style="z-index: 130; top: 15px; right: 15px;">✕</button>
-                
-                <!-- Видеопоток -->
-                <video id="camera-stream-video" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
-                
-                <!-- Оверлей видоискателя кузова/дефекта -->
-                <div class="scanner-overlay" style="border: none; justify-content: center; align-items: center; background: transparent; padding: 0; pointer-events: none;">
-                    <div style="width: 85%; height: 60%; border: 2px dashed rgba(197, 255, 26, 0.4); border-radius: var(--radius-md); box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); position: relative;">
-                        <div style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.7); padding: 4px 10px; border-radius: var(--radius-sm); color: var(--primary); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em;">
-                            РЕЖИМ СЪЕМКИ ОНЛАЙН
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Кнопки управления затвором и разворотом камеры -->
-                <div style="position: absolute; bottom: 30px; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 24px; z-index: 130;">
-                    <!-- Закрыть -->
-                    <button class="btn btn-secondary" onclick="app.closeCameraModal()" style="border-radius: var(--radius-full); width: 50px; height: 50px; padding: 0; display: flex; align-items: center; justify-content: center; border-color: rgba(255,255,255,0.2);">
-                        ✕
-                    </button>
-                    <!-- Затвор -->
-                    <button id="camera-capture-btn" onclick="app.captureCameraPhoto()" style="width: 76px; height: 76px; border-radius: var(--radius-full); background: white; border: 6px solid rgba(197, 255, 26, 0.4); box-shadow: 0 0 20px rgba(197, 255, 26, 0.6); cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none; transition: var(--transition);">
-                        <div style="width: 50px; height: 50px; border-radius: var(--radius-full); background: var(--primary);"></div>
-                    </button>
-                    <!-- Развернуть камеру -->
-                    <button class="btn btn-secondary" id="camera-toggle-btn" onclick="app.toggleCameraFacing()" style="border-radius: var(--radius-full); width: 50px; height: 50px; padding: 0; display: flex; align-items: center; justify-content: center; border-color: rgba(255,255,255,0.2);">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-
     </div>
 
-    <!-- Подключаем JavaScript логику -->
-    <script src="app.js?v=1.3"></script>
+    <script src="app.js?v=2.0"></script>
 </body>
 </html>
